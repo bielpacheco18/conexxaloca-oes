@@ -17,3 +17,11 @@ Setup (10 min)
 8. (opcional) troque gestao por outro código: renomeie o arquivo e ajuste a regra no vercel.json.
 9. Deploy: npx vercel deploy --prod  (ou GitHub → Vercel).
 10. Acesse https://SEU-DOMINIO/gestao e faça login.
+
+## Setup por CLI (alternativa ao painel do Supabase)
+1. Banco (tabela + RLS + bucket privado):
+   npx supabase login
+   npx supabase link --project-ref olbppjlcstlvhiwumsdg      # pede a senha do banco
+   npx supabase db push
+2. Admin: veja o topo de scripts/criar-admin.sh (a chave secret fica só no seu terminal).
+3. Authentication > Providers > Email: desligue "Allow new users to sign up".
