@@ -169,6 +169,7 @@ td .sb{font-size:12px;color:var(--muted)}
   </div>
 
   <main>
+    <div id="demoBar" class="hide" style="background:#fff2d6;color:#8a5a00;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:500">⚠ Modo demonstração: dados de exemplo, sem login. Ao configurar o Supabase no CONFIG, o login passa a ser obrigatório.</div>
     <div class="kpis" id="kpis"></div>
 
     <div class="dist">
@@ -220,7 +221,26 @@ const ST={novo:['Novo','✦'],em_analise:['Em análise','…'],aprovado:['Aprova
 const TEMPOS=['0 a 1 ano','1 a 2 anos','2 a 4 anos','Mais de 4 anos'];
 const APPS=['Uber','99','inDrive','Particular','Outro'];
 
-const sb=window.supabase.createClient(CONFIG.SUPABASE_URL||'https://invalid.local',CONFIG.SUPABASE_ANON_KEY||'x',{auth:{persistSession:true,autoRefreshToken:true}});
+
+/* ---------- MODO DEMONSTRAÇÃO (só quando o Supabase NÃO está configurado) ---------- */
+const DEMO=!CONFIG.SUPABASE_URL||!CONFIG.SUPABASE_ANON_KEY;
+function demoClient(){
+  const mk=(i,nome,st,tempo,apps,km,black,part,outra,ig)=>({id:'d'+i,created_at:new Date(Date.now()-i*36e5*7).toISOString(),status:st,notas:null,nome_completo:nome,rg:'12.345.67'+i+'-9',cpf:'111.222.333-'+String(10+i),telefone:'(21) 98888-77'+String(10+i),instagram:ig,endereco_moradia:'Rua Exemplo, '+(100+i)+', Rio de Janeiro',endereco_pernoite:'Rua Exemplo, '+(100+i),km_medio_dia:km,horario_inicio:'06:00',horario_fim:'18:00',apps,apps_outro:null,tempo_uber:tempo,categoria_black:black,faz_particular:part,outra_atividade:outra?'Sim':'Não',outra_atividade_detalhe:outra,exp_eletrico:i%2?'Sim':'Não',exp_eletrico_detalhe:i%2?'BYD Dolphin':null,contato1_nome:'Contato Um',contato1_telefone:'(21) 97777-0001',contato1_parentesco:'Mãe',contato2_nome:'Contato Dois',contato2_telefone:'(21) 96666-0002',contato2_parentesco:'Amigo',cnh_path:'x/cnh.jpg',selfie_path:'x/selfie.jpg',comprovante_path:'x/comp.pdf'});
+  const rows=[mk(1,'Carlos Eduardo Lima','novo','1 a 2 anos',['Uber','99'],190,'Não','Sim',null,'@carlos.lima'),
+    mk(2,'Ana Paula Ferreira','em_analise','2 a 4 anos',['Uber'],220,'Sim','Não','Vendedora autônoma',null),
+    mk(3,'Roberto Alves Souza','aprovado','Mais de 4 anos',['Uber','99','inDrive'],260,'Sim','Sim',null,'@beto.alves'),
+    mk(4,'Marcos Vinícius Rocha','novo','0 a 1 ano',['99'],150,'Não','Não',null,null),
+    mk(5,'Juliana Costa Mendes','reprovado','0 a 1 ano',['Uber','Particular'],120,'Não','Sim','CLT meio período','@ju.mendes'),
+    mk(6,'Fernando Dias Oliveira','em_analise','1 a 2 anos',['Uber','99'],200,'Não','Não',null,'@fer.dias')];
+  const svg='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#5FD0A7"/><text x="100" y="108" font-family="sans-serif" font-size="16" text-anchor="middle" fill="#0B1E1A">exemplo</text></svg>');
+  return{
+    auth:{getSession:async()=>({data:{session:{user:{email:'demonstração (sem login)'}}}}),signOut:async()=>{},signInWithPassword:async()=>({})},
+    rpc:async()=>({data:true}),
+    from:()=>({select:()=>({order:()=>({limit:async()=>({data:rows})})}),update:p=>({eq:async(c,id)=>{Object.assign(rows.find(r=>r.id===id)||{},p);return{}}})}),
+    storage:{from:()=>({createSignedUrl:async()=>({data:{signedUrl:svg}})})}
+  };
+}
+const sb=DEMO?demoClient():window.supabase.createClient(CONFIG.SUPABASE_URL||'https://invalid.local',CONFIG.SUPABASE_ANON_KEY||'x',{auth:{persistSession:true,autoRefreshToken:true}});
 let DATA=[],F={q:'',status:'',tempo:'',app:''},cur=null;
 
 /* ---------- auth ---------- */
@@ -230,7 +250,7 @@ async function guard(){
   const {data,error}=await sb.rpc('is_admin');
   if(error||data!==true){await sb.auth.signOut();showLogin(error?'Não foi possível validar o acesso.':'Este usuário não tem permissão de administrador.');return}
   $('#who').textContent=session.user.email;
-  $('#login').classList.add('hide');$('#app').classList.remove('hide');
+  $('#login').classList.add('hide');$('#app').classList.remove('hide');if(DEMO)$('#demoBar').classList.remove('hide');
   load();idle();
 }
 function showLogin(msg){$('#app').classList.add('hide');$('#login').classList.remove('hide');$('#lerr').textContent=msg||''}
