@@ -303,7 +303,7 @@ function render(){
   const list=filtered();
   $('#cnt').textContent=list.length+' de '+DATA.length;
   $('#rows').innerHTML=list.map(r=>`<tr class="row" data-id="${esc(r.id)}">
-    <td><div class="nm">${esc(r.nome_completo)}</div><div class="sb">${esc(r.cpf)}${r.selfie_path?'':' · <b style="color:#8a5a00">selfie pendente</b>'}</div></td>
+    <td><div class="nm">${esc(r.nome_completo)}</div><div class="sb">${esc(r.cpf)}${(r.cnh_path&&r.selfie_path&&r.comprovante_path)?'':' · <b style="color:#8a5a00">doc pendente</b>'}</div></td>
     <td class="hm">${esc(r.telefone)}</td><td class="hm">${esc(r.tempo_uber)}</td><td class="hm">${esc(r.km_medio_dia)} km</td>
     <td class="hm">${fmt(r.created_at)}</td><td>${tag(r.status)}</td></tr>`).join('');
   $('#none').textContent=list.length?'':(DATA.length?'Nenhum cadastro com esses filtros.':'Nenhum cadastro recebido ainda.');
@@ -338,7 +338,7 @@ async function openDr(id){
   $('#dB').innerHTML=`
     <div class="sec"><h4>Contato rápido</h4><div class="act">
       <a class="btn" href="${esc(waLink(r.telefone))}" target="_blank" rel="noopener">WhatsApp do motorista</a>
-      ${r.selfie_path?'':`<a class="btn ghost" href="${esc(waLink(r.telefone))}?text=${encodeURIComponent('Olá, '+r.nome_completo.split(' ')[0]+'! Aqui é da Conexxa Locações. Para concluir seu cadastro, pode nos enviar uma foto sua segurando seu documento (CNH ou RG)?')}" target="_blank" rel="noopener">Pedir selfie</a>`}${igLink(r.instagram)}<a class="btn ghost" href="tel:${esc(r.telefone.replace(/\D/g,''))}">Ligar</a></div></div>
+      ${(r.cnh_path&&r.selfie_path&&r.comprovante_path)?'':`<a class="btn ghost" href="${esc(waLink(r.telefone))}?text=${encodeURIComponent('Olá, '+r.nome_completo.split(' ')[0]+'! Aqui é da Conexxa Locações. Para concluir seu cadastro, pode nos enviar por aqui: '+[!r.cnh_path&&'foto da CNH',!r.selfie_path&&'uma foto sua segurando o documento (CNH ou RG)',!r.comprovante_path&&'comprovante de residência'].filter(Boolean).join(', ')+'?')}" target="_blank" rel="noopener">Pedir documentos</a>`}${igLink(r.instagram)}<a class="btn ghost" href="tel:${esc(r.telefone.replace(/\D/g,''))}">Ligar</a></div></div>
     <div class="sec"><h4>Status e anotações</h4>
       <div class="fld"><select class="in" id="eS">${Object.keys(ST).map(s=>`<option value="${s}" ${r.status===s?'selected':''}>${ST[s][0]}</option>`).join('')}</select></div>
       <div class="fld"><textarea class="in" id="eN" rows="3" placeholder="Anotações internas…">${esc(r.notas||'')}</textarea></div>
