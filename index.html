@@ -379,34 +379,23 @@ $$('[name=exp_eletrico]').forEach(r=>r.addEventListener('change',()=>$('#expBox'
 
 /* upload + compressão */
 const files={};
-const MAX_PDF=8*1024*1024;
-async function compress(file,max=1600){
-  if(!file.type.startsWith('image/'))return file;
-  try{
-    let bmp;
-    if(window.createImageBitmap){bmp=await createImageBitmap(file,{imageOrientation:'from-image'})}
-    else{bmp=await new Promise((ok,no)=>{const i=new Image(),u=URL.createObjectURL(file);i.onload=()=>ok(i);i.onerror=no;i.src=u})}
-    const w=bmp.width||bmp.naturalWidth,h=bmp.height||bmp.naturalHeight;
-    const k=Math.min(1,max/Math.max(w,h));
-    const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
-    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
-    if(bmp.close)bmp.close();
-    for(const q of [.8,.7,.55]){
-      const b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));
-      if(b&&(b.size<1.5*1024*1024||q===.55))return new File([b],file.name.replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'});
-    }
-  }catch(e){console.warn('compress',e)}
-  return null; // não conseguiu ler/reduzir a imagem
+function compress(file,max=1800,q=.82){
+  return new Promise(res=>{
+    if(!file.type.startsWith('image/'))return res(file);
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');c.width=img.width*k;c.height=img.height*k;
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      c.toBlob(b=>res(new File([b],file.name.replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'})),'image/jpeg',q);URL.revokeObjectURL(url)};
+    img.onerror=()=>res(file);img.src=url;
+  });
 }
 $$('.up').forEach(box=>{
   const inp=box.querySelector('input'),prev=box.querySelector('.prev');
   inp.addEventListener('change',async()=>{
     const f=inp.files[0];if(!f)return;
-    if(f.type==='application/pdf'&&f.size>MAX_PDF){alert('Esse PDF é grande demais (máx. 8 MB). Envie uma foto do documento ou um PDF menor.');inp.value='';return}
-    prev.style.display='block';prev.innerHTML='<em>Preparando arquivo…</em>';
-    const out=await compress(f);
-    if(!out){prev.style.display='none';inp.value='';alert('Não consegui ler essa foto. Tire a foto de novo pela câmera, ou envie em JPG, PNG ou PDF.');return}
-    files[inp.name]=out;
+    if(f.size>25*1024*1024){alert('Arquivo muito grande (máx. 25 MB).');inp.value='';return}
+    const out=await compress(f);files[inp.name]=out;
     prev.style.display='block';
     prev.innerHTML=(out.type.startsWith('image/')?'<img alt="">':'')+'<em>✓ '+f.name+'</em>';
     if(out.type.startsWith('image/'))prev.querySelector('img').src=URL.createObjectURL(out);
@@ -474,23 +463,16 @@ form.addEventListener('submit',async e=>{
   try{
     if(!sb)throw new Error('Supabase não configurado');
     const id=crypto.randomUUID();
-    const paths={},falhou=[];
-    const ROT={cnh:'CNH',selfie:'foto com documento',comprovante:'comprovante de residência'};
-    const lista=[['cnh','cnh'],['foto_segurando_documento','selfie'],['comprovante_residencia','comprovante']].filter(([k])=>files[k]);
-    let n=0;
-    for(const [key,nome] of lista){
-      n++;btn.innerHTML=`Enviando documentos (${n}/${lista.length})…`;
+    const paths={};
+    for(const [key,nome] of [['cnh','cnh'],['foto_segurando_documento','selfie'],['comprovante_residencia','comprovante']]){
       const f=files[key];
+      if(!f)continue;
       const ext=f.type==='application/pdf'?'pdf':(f.type==='image/png'?'png':'jpg');
       const p=`${id}/${nome}.${ext}`;
-      let ok=false;
-      for(let t=0;t<3&&!ok;t++){
-        const {error}=await sb.storage.from('documentos').upload(p,f,{contentType:f.type||'image/jpeg',upsert:true});
-        if(!error)ok=true;else{console.warn('upload',nome,error);await new Promise(r=>setTimeout(r,800*(t+1)))}
-      }
-      if(ok)paths[nome]=p;else falhou.push(ROT[nome]);
+      const {error}=await sb.storage.from('documentos').upload(p,f,{contentType:f.type||'image/jpeg',upsert:false});
+      if(error)throw error;
+      paths[nome]=p;
     }
-    btn.innerHTML='Enviando cadastro…';
     const {error}=await sb.from('cadastros').insert({
       id,
       nome_completo:val('nome_completo'),rg:val('rg'),cpf:val('cpf'),telefone:val('telefone'),
@@ -504,11 +486,10 @@ form.addEventListener('submit',async e=>{
       exp_eletrico_detalhe:val('exp_eletrico_detalhe')||null,
       contato1_nome:val('contato1_nome'),contato1_telefone:val('contato1_telefone'),contato1_parentesco:val('contato1_parentesco')||null,
       contato2_nome:val('contato2_nome'),contato2_telefone:val('contato2_telefone'),contato2_parentesco:val('contato2_parentesco')||null,
-      cnh_path:paths.cnh||null,selfie_path:paths.selfie||null,comprovante_path:paths.comprovante||null
+      cnh_path:paths.cnh,selfie_path:paths.selfie||null,comprovante_path:paths.comprovante
     });
     if(error)throw error;
     form.style.display='none';$('.progress').style.display='none';$('#done').style.display='block';
-    if(falhou.length)$('#doneTxt').textContent='Recebemos seu cadastro! Não conseguimos anexar: '+falhou.join(', ')+'. Fique tranquilo: nossa equipe vai entrar em contato pelo WhatsApp para pegar esses documentos.';
     if(CONFIG.WHATSAPP){
       const txt='Olá! Acabei de enviar meu cadastro de motorista na Conexxa Locações.\nNome: '+campos['Nome completo']+'\nCPF: '+campos['CPF'];
       const a=$('#waBtn');a.href='https://wa.me/'+CONFIG.WHATSAPP+'?text='+encodeURIComponent(txt);a.style.display='flex';
@@ -516,7 +497,7 @@ form.addEventListener('submit',async e=>{
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(err){
     btn.disabled=false;btn.innerHTML='Enviar cadastro <b>→</b>';
-    console.error(err);alert('Não foi possível enviar o cadastro agora. Verifique sua conexão e tente novamente.'+(err&&err.message?'\n\nDetalhe: '+err.message:''));
+    console.error(err);alert('Não foi possível enviar agora. Verifique sua conexão e tente novamente.');
   }
 });
 </script>

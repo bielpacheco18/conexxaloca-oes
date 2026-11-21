@@ -40,9 +40,9 @@ create table if not exists public.cadastros (
   contato2_telefone     text not null,
   contato2_parentesco   text,
 
-  cnh_path              text,  -- pode faltar se o upload falhar
+  cnh_path              text not null,
   selfie_path           text,  -- opcional (pode ser pedida depois)
-  comprovante_path      text,  -- pode faltar se o upload falhar
+  comprovante_path      text not null,
 
   lgpd_aceite_em        timestamptz not null default now()
 );
@@ -99,7 +99,7 @@ values ('documentos', 'documentos', false, 8388608,
         array['image/jpeg','image/png','image/webp','application/pdf'])
 on conflict (id) do update
   set public = false, file_size_limit = 8388608,
-      allowed_mime_types = array['image/jpeg','image/png','image/webp','image/heic','image/heif','application/pdf'];
+      allowed_mime_types = array['image/jpeg','image/png','image/webp','application/pdf'];
 
 -- Público só consegue ENVIAR (nunca listar/ler). Admin só lê.
 drop policy if exists "docs_upload_publico" on storage.objects;
