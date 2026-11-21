@@ -41,7 +41,7 @@ create table if not exists public.cadastros (
   contato2_parentesco   text,
 
   cnh_path              text not null,
-  selfie_path           text not null,
+  selfie_path           text,  -- opcional (pode ser pedida depois)
   comprovante_path      text not null,
 
   lgpd_aceite_em        timestamptz not null default now()

@@ -310,13 +310,13 @@ footer i{display:inline-block;width:30px;height:1.5px;background:var(--mint);ver
           <div class="prev"></div>
         </label><div class="msg">Anexe sua CNH.</div></div>
 
-      <div class="f"><span class="lbl">Foto segurando um documento <i class="req">*</i></span>
+      <div class="f"><span class="lbl">Foto segurando um documento <small style="font-weight:300;color:var(--muted)">(opcional — pode enviar depois)</small></span>
         <label class="up" data-key="selfie">
-          <input type="file" name="foto_segurando_documento" accept="image/*" capture="user" required>
+          <input type="file" name="foto_segurando_documento" accept="image/*" capture="user">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
           <strong>Tirar / enviar selfie com documento</strong><small>Rosto e documento (CNH ou RG) bem visíveis e legíveis</small>
           <div class="prev"></div>
-        </label><div class="msg">Anexe a foto segurando o documento.</div></div>
+        </label><div class="hint">Se não tiver agora, nossa equipe vai te pedir depois pelo WhatsApp.</div></div>
     </fieldset>
 
     <label class="consent" id="consentBox">
@@ -426,7 +426,6 @@ function validate(){
   ['c1n','c2n'].forEach(i=>chk($('#'+i),$('#'+i).value.trim().length>=2));
   ['c1t','c2t'].forEach(i=>chk($('#'+i),validPhone($('#'+i).value)));
   chk($('[name=cnh]'),!!files.cnh);
-  chk($('[name=foto_segurando_documento]'),!!files.foto_segurando_documento);
   const l=!$('#lgpd').checked;$('#lgpdMsg').style.display=l?'block':'none';if(l)bad.push($('#lgpd'));
   return bad;
 }
@@ -442,7 +441,7 @@ function update(){
     !!$('[name=tempo_uber]:checked'),!!$('[name=categoria_black]:checked'),
     !!$('[name=faz_particular]:checked'),!!$('[name=exp_eletrico]:checked'),!!$('[name=outra_atividade]:checked')&&($('[name=outra_atividade]:checked').value==='Não'||$('#outraDet').value.trim().length>=2),
     $('#c1n').value.trim().length>=2,validPhone($('#c1t').value),$('#c2n').value.trim().length>=2,validPhone($('#c2t').value),
-    !!files.cnh,!!files.foto_segurando_documento,$('#lgpd').checked
+    !!files.cnh,$('#lgpd').checked
   ];
   const p=Math.round(checks.filter(Boolean).length/checks.length*100);
   $('#pBar').style.width=p+'%';$('#pPct').textContent=p+'%';
@@ -467,6 +466,7 @@ form.addEventListener('submit',async e=>{
     const paths={};
     for(const [key,nome] of [['cnh','cnh'],['foto_segurando_documento','selfie'],['comprovante_residencia','comprovante']]){
       const f=files[key];
+      if(!f)continue;
       const ext=f.type==='application/pdf'?'pdf':(f.type==='image/png'?'png':'jpg');
       const p=`${id}/${nome}.${ext}`;
       const {error}=await sb.storage.from('documentos').upload(p,f,{contentType:f.type||'image/jpeg',upsert:false});
@@ -486,7 +486,7 @@ form.addEventListener('submit',async e=>{
       exp_eletrico_detalhe:val('exp_eletrico_detalhe')||null,
       contato1_nome:val('contato1_nome'),contato1_telefone:val('contato1_telefone'),contato1_parentesco:val('contato1_parentesco')||null,
       contato2_nome:val('contato2_nome'),contato2_telefone:val('contato2_telefone'),contato2_parentesco:val('contato2_parentesco')||null,
-      cnh_path:paths.cnh,selfie_path:paths.selfie,comprovante_path:paths.comprovante
+      cnh_path:paths.cnh,selfie_path:paths.selfie||null,comprovante_path:paths.comprovante
     });
     if(error)throw error;
     form.style.display='none';$('.progress').style.display='none';$('#done').style.display='block';
