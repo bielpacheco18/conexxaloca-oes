@@ -346,8 +346,29 @@ const CONFIG = {
   SUPABASE_URL: "https://olbppjlcstlvhiwumsdg.supabase.co",       // ex.: https://xxxxx.supabase.co
   SUPABASE_ANON_KEY: "sb_publishable_4Yck12UlkkmuQS33GmFMYQ_pyI9bjlP",  // chave "anon public" (é pública por design; a segurança está no RLS)
   // WhatsApp da Conexxa (somente números, com DDI+DDD). Ex.: "5521999999999"
-  WHATSAPP: ""
+  WHATSAPP: "",
+  // Rastreamento (deixe vazio para desligar)
+  GTM_ID: "",        // ex.: GTM-XXXXXXX  (mesmo container do site principal)
+  META_PIXEL_ID: ""  // opcional: só use se NÃO for disparar o pixel pelo GTM (evita contar lead em dobro)
 };
+window.dataLayer=window.dataLayer||[];
+(function(){
+  if(CONFIG.GTM_ID){
+    dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});
+    const s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtm.js?id='+encodeURIComponent(CONFIG.GTM_ID);
+    document.head.appendChild(s);
+  }
+  if(CONFIG.META_PIXEL_ID){
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init',CONFIG.META_PIXEL_ID);fbq('track','PageView');
+  }
+})();
+// Evento de conversão. Sem dados pessoais (LGPD): só o tipo de lead.
+function trackLead(extra){
+  const eid='lead_'+Date.now();
+  dataLayer.push(Object.assign({event:'generate_lead',lead_type:'cadastro_motorista',event_id:eid},extra||{}));
+  if(window.fbq)fbq('track','Lead',{content_name:'cadastro_motorista'},{eventID:eid});
+}
 const sb=(CONFIG.SUPABASE_URL&&CONFIG.SUPABASE_ANON_KEY&&window.supabase)
   ? window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}}) : null;
 /* ====================================== */
@@ -489,6 +510,7 @@ form.addEventListener('submit',async e=>{
       cnh_path:paths.cnh,selfie_path:paths.selfie||null,comprovante_path:paths.comprovante
     });
     if(error)throw error;
+    trackLead({tempo_uber:radio('tempo_uber'),categoria_black:radio('categoria_black')});
     form.style.display='none';$('.progress').style.display='none';$('#done').style.display='block';
     if(CONFIG.WHATSAPP){
       const txt='Olá! Acabei de enviar meu cadastro de motorista na Conexxa Locações.\nNome: '+campos['Nome completo']+'\nCPF: '+campos['CPF'];
